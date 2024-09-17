@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "pypy-3.9", "pypy-3.10"]
+
+    name: Test package
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - name: Run actions/checkout
+        uses: actions/checkout@v4
+
+      - name: Run actions/setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version}}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .[test-tools]
+
+      - name: Run tests
+        run: pytest
