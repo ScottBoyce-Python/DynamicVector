@@ -86,12 +86,12 @@ class DynamicVector:
         self._zero = self._data[0]
 
     @classmethod
-    def from_vector(cls, vector, *, grow_use_add=None, grow_add=None):
+    def from_values(cls, values, *, grow_use_add=None, grow_add=None):
         """
         Create a DynamicVector from an existing vector.
 
         Parameters:
-            vector (sequence): The source array to initialize the vector.
+            values (sequence): The source array to initialize the vector.
             grow_use_add (int, optional): Custom threshold to switch from multiplicative to additive growth.
             grow_add (int, optional): Custom value for additive growth.
 
@@ -99,26 +99,26 @@ class DynamicVector:
             DynamicVector: A new dynamic vector initialized with the values from the input vector.
         """
         try:
-            capacity = len(vector)
+            capacity = len(values)
         except TypeError:
-            return cls.from_iter(vector, grow_use_add, grow_add)
+            return cls.from_iter(values, grow_use_add, grow_add)
 
         try:
-            dtype = vector.dtype
+            dtype = values.dtype
         except AttributeError:
             try:
-                dtype = type(vector[0])
+                dtype = type(values[0])
             except IndexError:
-                raise ValueError("Either pass variable with dtype attribute, or len(vector) must be greater than zero.")
+                raise ValueError("Either pass variable with dtype attribute, or len(values) must be greater than zero.")
 
-        if isinstance(vector, DynamicVector):
+        if isinstance(values, DynamicVector):
             if grow_use_add is None:
-                grow_use_add = vector.grow_use_add
+                grow_use_add = values.grow_use_add
             if grow_add is None:
-                grow_add = vector.grow_add
+                grow_add = values.grow_add
 
         dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
-        dyn.extend(vector)
+        dyn.extend(values)
         return dyn
 
     @classmethod
@@ -183,6 +183,10 @@ class DynamicVector:
         It is recommended to not set view to another variable,
         but instead use `self.view` it as needed."""
         return self._data[: self._size]
+
+    # @view.setter
+    # def view(self, value):
+    #     self._data[: self._size] = value
 
     @property
     def dtype(self) -> np.dtype:
@@ -509,10 +513,14 @@ class DynamicVector:
         return self._size
 
     def __repr__(self):
-        return repr(self.view)
+        dyn = repr(self.view)
+        dyn = dyn[dyn.find("(") :]  # drop "array" from name
+        return f"DynamicVector{dyn}"
 
     def __str__(self):
-        return str(self.view)
+        dyn = repr(self.view)
+        dyn = dyn[dyn.find("[") : dyn.find("]") + 1]  # get core part of numpy array
+        return f"DynamicVector({dyn})"
 
     def __iter__(self):
         return iter(self.view)
@@ -801,4 +809,82 @@ if __name__ == "__main__":
         x.append(i)
     print(x)
 
-    x = DynamicVector.from_vector([1, 2, 3, 4, 5])
+    x = DynamicVector.from_values([1, 2, 3, 4, 5])
+
+    # Initialize with a list
+    vec = DynamicVector.from_values([1, 2, 3])  # integer vector with three values
+
+    print(vec)
+    print(repr(vec))
+    # Output: DynamicVector([1, 2, 3])
+    # Output: DynamicVector([1, 2, 3], dtype=int32)
+
+    # Access the underlying NumPy array via the 'view' property
+    print(vec.view)
+    print(vec[:])
+    # Output: [1 2 3]
+    # Output: [1 2 3] -> same as vec.view
+
+    # Perform NumPy operations
+    vec += 1
+    print(vec)
+    # Output: DynamicVector([2, 3, 4])
+
+    vec[1] = 99
+    print(vec)
+    # Output: DynamicVector([ 2, 99,  4])
+
+    vec[1 : len(vec)] = 8  # set element 2 and 3 to the value of 8.
+    print(vec)
+    # Output: DynamicVector([2, 8, 8])
+
+    vec[:] = [2, 3, 4]
+    print(vec)
+    # Output: DynamicVector([2, 3, 4])
+
+    # Append elements dynamically
+    vec.append(5)  # Fast operation
+    print(vec)
+    # Output: DynamicVector([2, 3, 4, 5])
+
+    vec.extend([7, 8, 9])  # Fast operation
+    print(vec)
+    # Output: DynamicVector([1, 2, 3, 5, 7, 8, 9])
+
+    # Insert at a specific index
+    vec.insert(1, 10)
+    print(vec)
+    # Output: DynamicVector([ 1, 10,  2,  3,  5,  7,  8,  9])
+
+    # Insert at a specific index
+    vec.insert_values(3, [97, 98])
+    print(vec)
+    # Output: DynamicVector([ 1, 10,  2, 97, 98,  3,  5,  7,  8,  9])
+
+    # Remove and return the last element
+    print(vec)
+    last_elem = vec.pop()  # Fast operation
+    print(vec)
+    print(last_elem)
+    # Output: DynamicVector([ 1, 10,  2, 97, 98,  3,  5,  7,  8,  9])
+    # Output: DynamicVector([ 1, 10,  2, 97, 98,  3,  5,  7,  8])
+    # Output: 9
+
+    third_element = vec.pop(2)
+    print(vec)
+    print(third_element)
+    # Output: DynamicVector([ 1, 10, 97, 98,  3,  5,  7,  8])
+    # Output: 2
+
+    # Slice behaves like NumPy arrays
+    sliced_vec = vec[1:3]
+    print(sliced_vec)
+    # Output: [10  97]
+
+    vec[2:5] = [51, 52, 53]
+    print(vec)
+    # Output: DynamicVector([ 1, 10, 51, 52, 53,  5,  7,  8])
+
+    vec[[1, 3, 5]] = [-1, -2, -3]
+    print(vec)
+    # Output: DynamicVector([ 1, -1, 51, -2, 53, -3,  7,  8])
