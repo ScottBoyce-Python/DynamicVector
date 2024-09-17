@@ -1,0 +1,203 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "DynamicVector"
+description = "Class that provides a dynamic vector using numpy to store the values. Can access all numpy methods using a view property and includes common list functions for operating without a view. "
+authors = [{ name = "Scott E. Boyce", email = "Boyce@engineer.com" }]
+maintainers = [{ name = "Scott E. Boyce", email = "Boyce@engineer.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.8,<4"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dynamic = ["version"]
+dependencies=[
+  "numpy>=2.0"
+]
+
+[project.optional-dependencies]
+# pip install .[test-tools]
+lint = ["ruff"]
+test-tools = [
+  "DynamicVector[lint]", 
+  "pytest", 
+  "pytest-xdist",
+  ]
+
+[project.urls]
+"Homepage" = "https://github.com/ScottBoyce-Python/DynamicVector"
+"Source Code" = "https://github.com/ScottBoyce-Python/DynamicVector"
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[tool.pytest.ini_options]
+# agressive parallel options
+addopts = "-ra --dist worksteal -nauto" # Defaults to parallel tests, comment out if you want serial.
+# addopts = "-ra -v --dist worksteal -nauto" # parallel run with verbose output.
+# addopts="-ra --dist worksteal -nauto --run-slow-skip"  # run skip tests and skip subset tests
+# addopts="-ra --dist worksteal -nauto -m 'not slow'"  # on run fast tests
+# addopts = "-ra --dist worksteal -nauto -q"  # supress output during testing
+
+# Regular parallel options
+# addopts = "-ra -nauto"  # Defaults to parallel tests, comment out if you want serial.
+# addopts="-ra -nauto --run-slow-skip"  # run skip tests and skip subset tests
+# addopts="-ra -nauto -m 'not slow'"  # on run fast tests
+# addopts = "-ra -nauto -q"  # supress output during testing
+
+
+# markers = [
+#   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+#   "subset: marks tests as beings a subset of a slow_skip test that is created for fast parallel executaion, skipped if running slow_skip.",
+#   "slow_skip: marks tests as slow_skip, which are also marked with skip\n(select with 'pytest --run-skipped', which will skip subtest.)",
+# ]
+
+minversion = "6.0"
+testpaths = ["tests"]
+# Customizing test discovery patterns
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*", "Check*"]
+python_functions = ["test_*", "check_*"]
+
+[tool.setuptools]
+packages = ["DynamicVector"]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { attr = "DynamicVector._metadata.__version__" }
+
+[tool.black]
+target-version = ['py39']
+line-length = 120
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+indent-width = 4
+
+exclude = [
+  ".eggs",
+  ".git",
+  "_build",
+  "build",
+  "dist",
+  "htmlcov",
+  "vulture.egg-info",
+  ".cache",
+  ".coverage",
+  ".pytest_cache",
+  ".tox",
+  ".venv",
+  ".vscode",
+]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+# Use `\n` line endings for all files
+line-ending = "lf"
+
+# [tool.ruff.lint]
+# select = ["ALL"]
+# extend-safe-fixes = ["UP007", "UP006"]
+
+# select = [
+#     "B",  # flake8-bugbear
+#     "E",  # pycodestyle error
+#     "F",  # pyflakes
+#     "I",  # isort
+#     "UP",  # pyupgrade
+#     "W",  # pycodestyle warning
+# ]
+
+# select = [
+#   "C4", # flake8-comprehensions
+#   "E", # pycodestyle errors
+#   "EM", # flake8-errmsg
+#   "F", # pyflakes errors
+#   "I", # isort
+#   "ISC", # flake8-implicit-str-concat
+#   "LOG", # flake8-logging
+#   "PGH", # pygrep-hooks
+#   "PYI", # flake8-pyi
+#   "RUF100", # unused noqa (yesqa)
+#   "UP", # pyupgrade
+#   "W", # pycodestyle warnings
+#   "YTT", # flake8-2020
+# ]
+
+# ignore = [
+#     "C90",  # mccabe
+#     "FBT", # allow boolean args.
+#     "CPY",  # copyright
+#     "S101", # allow asserts.
+#     "E731",  # Allow lambda
+#     "E741",  # Allow short variable names.
+#     "E203", # Whitespace before ':'
+#     "E221", # Multiple spaces before operator
+#     "E226", # Missing whitespace around arithmetic operator
+#     "E241", # Multiple spaces after ','
+#     "PYI026", # flake8-pyi: typing.TypeAlias added in Python 3.10
+#     "PYI034", # flake8-pyi: typing.Self added in Python 3.11
+#     "D102",  # Do not check public method docstrings (Cannot determine overridden docstrings)
+#              # @typing.override not available until python 3.12 (PEP 698)
+#     "PLR",  # Too many of too many checks.
+#     "ANN101",  # Ignore self type annotation.
+#     "ANN401", # Allow Any as type annotation
+#     "D105",  # Allow no docstring magic method.
+#     "SIM108", # Simplify if/else is not always best.
+#     "PTH",  # don't require pathlib. Add eventually?
+#     "TRY",  # no triceratops.
+#     "NPY",  # remove numpy
+#     "Q000",  # double quotes
+#     "E401",  # Multiple imports on one line
+#     "E402",  # Module level import not at top of file
+#     "E501",  # Line too long (<LENGTH> > 88 characters)
+#     "E701",  # Multiple statements on one line (colon)
+#     "E702",  # Multiple statements on one line (semicolon)
+#     "E703",  # Statement ends with an unnecessary semicolon
+#     "E711",  # Comparison to `None` should be `cond is not None`
+#     "E712",  # Comparison to `<BOOL>` should be `cond is <BOOL>`
+#     "E713",  # Test for membership should be `not in`
+#     "E714",  # Test for object identity should be `is not`
+#     "E721",  # Do not compare types, use `isinstance()`
+#     "E722",  # Do not use bare `except`
+#     "E731",  # Do not assign a `lambda` expression, use a `def`
+#     "E741",  # Ambiguous variable name: `<VARIABLE>`
+#     "E743",  # Ambiguous function name: `<FUNCTION>`
+#     "F401",  # `<TYPE>` imported but unused
+#     "F403",  # `from <MODULE> import *` used; unable to detect undefined names
+#     "F405",  # `<TYPE>` may be undefined, or defined from star imports: `<MODULE>`
+#     "F523",  # `.format` call has unused arguments at position(s): <INDEX>
+#     "F601",  # Dictionary key literal `'<KEY>'` repeated
+#     "F811",  # Redefinition of unused `<VARIABLE>` from line <LINE>
+#     "F821",  # Undefined name `VARIABLE`
+#     "F823",  # Local variable `VARIABLE` referenced before assignment
+#     "F841",  # Local variable `VARIABLE` is assigned to but never used
+# ]
+
+
+# [tool.ruff.flake8-quotes]
+# inline-quotes = 'single'
+
+# [tool.ruff.lint.per-file-ignores]
+# # Ignore doc requirements, naming, arguments in platform and lib files.
+# "pyglet/font/directwrite.py" = ["RUF012", "D", "N", "ARG"]
+# "pyglet/font/fontconfig.py" = ["RUF012", "D", "N", "ARG"]
+# "pyglet/font/freetype.py" = ["RUF012", "D", "N", "ARG"]
+# "pyglet/font/freetype_lib.py" = ["RUF012", "D", "N", "ARG"]
+# "pyglet/font/quartz.py" = ["RUF012", "D", "N", "ARG"]
+# "pyglet/font/ttf.py" = ["RUF012", "D", "N", "ARG"]
+# "pyglet/font/win32.py" = ["RUF012", "D", "N", "ARG"]
