@@ -11,7 +11,7 @@ def small_vector():
 
 
 def test_insert1():
-    vector = DynamicVector.from_vector([1, 2, 4])
+    vector = DynamicVector.from_values([1, 2, 4])
     vector.insert(2, 3)
     assert vector.is_equal([1, 2, 3, 4])
 
