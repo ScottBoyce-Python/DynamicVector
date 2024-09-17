@@ -1,5 +1,4 @@
 import pytest
-import numpy as np
 from DynamicVector import DynamicVector
 
 
@@ -17,7 +16,7 @@ def small_vector():
 
 
 def test_append():
-    vector = DynamicVector.from_vector([1, 2, 3])
+    vector = DynamicVector.from_values([1, 2, 3])
     vector.append(4)
     assert vector.is_equal([1, 2, 3, 4])
 
@@ -37,7 +36,7 @@ def test_append32(small_vector):
 
 
 def test_extend():
-    vector = DynamicVector.from_vector([1, 2, 3])
+    vector = DynamicVector.from_values([1, 2, 3])
     vector.extend([4, 5])
     assert vector.is_equal([1, 2, 3, 4, 5])
 

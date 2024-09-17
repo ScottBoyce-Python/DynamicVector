@@ -1,5 +1,4 @@
 import pytest
-import numpy as np
 from DynamicVector import DynamicVector
 
 
@@ -17,7 +16,7 @@ def small_vector():
 
 
 def test_remove():
-    vector = DynamicVector.from_vector([1, 2, 3, 4])
+    vector = DynamicVector.from_values([1, 2, 3, 4])
     vector.remove(3)
     assert vector.is_equal([1, 2, 4])
 
@@ -36,7 +35,7 @@ def test_remove_all(small_vector):
 
 
 def test_pop1():
-    vector = DynamicVector.from_vector([1, 2, 3])
+    vector = DynamicVector.from_values([1, 2, 3])
     popped_value = vector.pop()
     assert popped_value == 3
     assert vector.is_equal([1, 2])
