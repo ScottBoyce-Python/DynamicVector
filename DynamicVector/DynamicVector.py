@@ -1,5 +1,34 @@
 import numpy as np
 
+try:
+    from ._metadata import (
+        __version__,
+        __author__,
+        __email__,
+        __license__,
+        __status__,
+        __maintainer__,
+        __credits__,
+        __url__,
+        __description__,
+        __copyright__,
+    )
+except ImportError:
+    __version__ = "Failed to load from _metadata.py"
+    __author__ = __version__
+    __email__ = __version__
+    __license__ = __version__
+    __status__ = __version__
+    __maintainer__ = __version__
+    __credits__ = __version__
+    __url__ = __version__
+    __description__ = __version__
+    __copyright__ = __version__
+
+__all__ = [
+    "DynamicVector",
+]
+
 # Constants that determine when to switch from multiplicative to additive growth
 _GROW_USE_ADD = 2**13  # Threshold capacity (8192), where growth switches to additive mode
 _GROW_ADD = 2**11  # Capacity to add when additive mode is active (2048)
@@ -198,7 +227,7 @@ class DynamicVector:
                 self.append(value)
             return
 
-        if new_size >= self._cap:
+        if new_size > self._cap:
             self._grow_data(new_size)
 
         self._data[self._size : new_size] = values
@@ -207,8 +236,9 @@ class DynamicVector:
     def insert(self, index, value):
         """Insert an item at a given position.
         The first argument is the index of the element before which to insert, so a.insert(0, x)
-        inserts at the front of the list, and a.insert(len(a), x) is equivalent to a.append(x)."""
-        if isinstance(index, int):
+        inserts at the front of the list, and a.insert(len(a), x) is equivalent to a.append(x).
+        Index may be a single value or list-like array that represent all the index locations to place value"""
+        if isinstance(index, (int, np.integer, np.unsignedinteger)):
             if index == self._size:
                 self.append(value)
                 return
@@ -220,13 +250,37 @@ class DynamicVector:
         else:
             index = sorted(index, reverse=True)  # assume its listlike input
 
-        if self._size + len(index) >= self._cap:
+        if self._size + len(index) > self._cap:
             self._grow_data(self._size + len(index))
 
         for p in index:
             self._size += 1
-            self._data[index + 1 : self._size] = self._data[index : self._size - 1]
-            self._data[index] = value
+            self._data[p + 1 : self._size] = self._data[p : self._size - 1]
+            self._data[p] = value
+
+    def insert_values(self, index, values):
+        """Insert a set of values at a given position.
+        The first argument is the index of the element before which to insert, so a.insert(0, x)
+        inserts at the front of the list, and a.insert(len(a), x) is equivalent to a.append(x).
+        values may be any listlike array that supports len()."""
+
+        if len(values) == 1:
+            self.insert(index, values[0])
+            return
+
+        if index == self._size:
+            self.extend(values)
+            return
+
+        index = self._format_int_index(index)
+
+        new_size = self._size + len(values)
+        if new_size > self._cap:
+            self._grow_data(new_size)
+
+        self._data[index + len(values) : new_size] = self._data[index : self._size]
+        self._data[index : index + len(values)] = values
+        self._size = new_size
 
     def remove(self, value, remove_all=False, from_right=False) -> bool:
         # remove value from array, return true if one or more values found
@@ -250,7 +304,7 @@ class DynamicVector:
         return True
 
     def pop(self, index=-1, return_None=False):
-        if isinstance(index, int):
+        if isinstance(index, (int, np.integer, np.unsignedinteger)):
             if self._size < 1:
                 if return_None:
                     return None
@@ -280,7 +334,7 @@ class DynamicVector:
         if self._size < 1:
             return
 
-        if isinstance(index, int):
+        if isinstance(index, (int, np.integer, np.unsignedinteger)):
             if index < 0:
                 index = self._size + index
             if index < 0 or index >= self._size:
@@ -324,9 +378,6 @@ class DynamicVector:
     def contains(self, value) -> bool:
         return value in self._data[: self._size]
 
-    def __contains__(self, value):
-        return value in self._data[: self._size]
-
     def copy(self, min_capacity=8):
         capacity = self._size if min_capacity < self._size else min_capacity
         dyn = DynamicVector(self._dtype, capacity, self._grow_use_add, self._grow_add)
@@ -342,6 +393,16 @@ class DynamicVector:
 
     def where(self, value):
         return np.where(self._data[: self._size] == value)[0]
+
+    def index(self, value, from_right=False) -> np.integer:
+        p = np.where(self._data[: self._size] == value)[0]
+
+        if len(p) < 1:
+            raise ValueError(f"{value} is not in the vector")
+
+        if from_right:
+            return p[-1]
+        return p[0]
 
     def resize(self, size: int):
         if size < self._size:
@@ -382,8 +443,26 @@ class DynamicVector:
 
         self._data = tmp
 
+    def is_equal(self, other) -> bool:
+        return np.all(self.view == other)
+
+    def is_less(self, other) -> bool:
+        return np.all(self.view < other)
+
+    def is_greater(self, other) -> bool:
+        return np.all(self.view > other)
+
+    def is_less_or_equal(self, other) -> bool:
+        return np.all(self.view <= other)
+
+    def is_greater_or_equal(self, other) -> bool:
+        return np.all(self.view >= other)
+
+    def is_not_equal(self, other) -> bool:
+        return np.all(self.view != other)
+
     def __getitem__(self, index):
-        if isinstance(index, int):
+        if isinstance(index, (int, np.integer, np.unsignedinteger)):
             if index < 0:
                 index = self._size + index
             if index < 0 or index >= self._size:
@@ -406,7 +485,7 @@ class DynamicVector:
         return self._data[: self._size][index]
 
     def __setitem__(self, index, value):
-        if isinstance(index, int):
+        if isinstance(index, (int, np.integer, np.unsignedinteger)):
             if index < 0:
                 index = self._size + index
             if index < 0 or index >= self._size:
@@ -428,6 +507,9 @@ class DynamicVector:
 
         self._data[: self._size][index] = value
 
+    def __len__(self) -> int:
+        return self._size
+
     def __repr__(self):
         return repr(self.view)
 
@@ -442,6 +524,9 @@ class DynamicVector:
 
     def __deepcopy__(self, unused=None):
         return self.copy()
+
+    def __contains__(self, value):
+        return value in self._data[: self._size]
 
     def __pos__(self):  # +val
         return self.copy()
