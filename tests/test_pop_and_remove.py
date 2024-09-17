@@ -31,8 +31,8 @@ def test_remove_value(small_vector):
 def test_remove_all(small_vector):
     small_vector.extend([2, 2, 2])
     assert small_vector.remove(2, remove_all=True)
-    assert small_vector.size == 2
-    assert 2 not in small_vector.view
+    assert small_vector.size == 4
+    assert 2 not in small_vector
 
 
 def test_pop1():

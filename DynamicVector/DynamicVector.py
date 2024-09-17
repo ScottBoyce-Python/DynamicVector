@@ -380,7 +380,7 @@ class DynamicVector:
 
     def copy(self, min_capacity=8):
         capacity = self._size if min_capacity < self._size else min_capacity
-        dyn = DynamicVector(self._dtype, capacity, self._grow_use_add, self._grow_add)
+        dyn = DynamicVector(self._dtype, capacity, grow_use_add=self._grow_use_add, grow_add=self._grow_add)
         dyn.extend(self._data[: self._size])
         return dyn
 
@@ -409,9 +409,7 @@ class DynamicVector:
             self._data[size : self._size] = self._zero
         elif size > self._cap:
             self._grow_data(size)
-            self._size = size
-        else:
-            self._size = size
+        self._size = size
 
     def increase_size(self, increase_by: int):
         self.resize(self._size + increase_by)
@@ -544,57 +542,68 @@ class DynamicVector:
     def __iadd__(self, other):  # To get called on addition with assignment e.g. a +=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view += other
+        self._data[: self._size] += other
+        return self
 
     def __isub__(self, other):  # To get called on subtraction with assignment e.g. a -=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view -= other
+        self._data[: self._size] -= other
+        return self
 
     def __imul__(self, other):  # To get called on multiplication with assignment e.g. a *=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view *= other
+        self._data[: self._size] *= other
+        return self
 
     def __itruediv__(self, other):  # To get called on true division with assignment e.g. a /=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view /= other
+        self._data[: self._size] /= other
+        return self
 
     def __irtruediv__(self, other):  # To get called on true division with assignment e.g. a /=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view /= other
+        self._data[: self._size] /= other
+        return self
 
-    def __ifloordiv__(self, other):  # To get called on integer division with assignment e.g. a //=b.self.view /= other
+    def __ifloordiv__(self, other):  # To get called on integer division with assignment e.g. a //=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view //= other
+        self._data[: self._size] //= other
+        return self
 
     def __irfloordiv__(self, other):  # To get called on integer division with assignment e.g. a //=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view //= other
+        self._data[: self._size] //= other
+        return self
 
     def __imod__(self, other):  # To get called on modulo with assignment e.g. a%=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view %= other
+        self._data[: self._size] %= other
+        return self
 
     def __irmod__(self, other):  # To get called on modulo with assignment e.g. a%=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view %= other
+        self._data[: self._size] %= other
+        return self
 
     def __ipow__(self, other):  # To get called on exponents with assignment e.g. a **=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view **= other
+        self._data[: self._size] **= other
+        return self
 
     def __irpow__(self, other):  # To get called on exponents with assignment e.g. a **=b.
         if isinstance(other, DynamicVector):
             other = other.view
-        self.view **= other
+        self._data[: self._size] **= other
+        return self
 
     def __int__(self):  # To get called by built-int int() method to convert a type to an int.
         res = DynamicVector(int, self._cap)
