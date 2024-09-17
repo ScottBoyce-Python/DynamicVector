@@ -1,8 +1,9 @@
 # DynamicVector Python Module
 
 <p align="left">
-  <img src="https://github.com/ScottBoyce-Python/DateIntervalCycler/actions/workflows/python-pytest.yml/badge.svg" alt="Build Status" height="20">
+  <img src="https://github.com/ScottBoyce-Python/DynamicVector/actions/workflows/python-pytest.yml/badge.svg" alt="Build Status" height="20">
 </p>
+
 
 DynamicVector is a Python class designed to combine the flexibility of Python lists with the computational efficiency of NumPy arrays. It allows for dynamic resizing, list-like manipulation, and full access to NumPy’s powerful numerical operations. 
 
