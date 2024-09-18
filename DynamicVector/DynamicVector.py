@@ -360,6 +360,112 @@ class DynamicVector:
         dyn._size = size
         return dyn
 
+    @classmethod
+    def arange(
+        cls, *args, start=None, stop=None, step=None, dtype=None, capacity=None, grow_use_add=None, grow_add=None
+    ):
+        """
+        Create a DynamicVector from evenly spaced values within a given interval
+        and specified data type (dtype). If dtype is not given, then it is set to `np.int32`.
+
+        DynamicVector.zeros(start=1, stop, step=1, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        `arange` can be called with a varying number of positional arguments:
+
+        - `arange(stop)`:                    Values are generated within the half-open interval [0, stop)
+                                             (in other words, the interval including start but excluding stop).
+        - `arange(start, stop)`:             Values are generated within the half-open interval [start, stop).
+        - `arange(start, stop, step)`        Values are generated within the half-open interval [start, stop),
+                                             with spacing between values given by step.
+        - `arange(start, stop, step, dtype)` Values are generated within the half-open interval [start, stop),
+                                             with spacing between values given by step and has data type, dtype.
+
+        `arange` can also use keyword argument `start`, `stop`, `step` and `dtype`.
+        However, if a positional argument of the same name is used, as described above,
+        then only the keywords that are not one of the position arguments names can be used.
+        Such as:
+
+        - `arange(stop)`:                    Cannot use the keyword  `stop`.
+        - `arange(start, stop)`:             Cannot use the keywords `start`, `stop`.
+        - `arange(start, stop, step)`        Cannot use the keywords `start`, `stop`, `step`,.
+        - `arange(start, stop, step, dtype)` Cannot use the keywords `start`, `stop`, `step`, `dtype`.
+
+        For integer arguments the function is roughly equivalent to the Python built-in range,
+        but returns an DynamicVector rather than a range instance.
+
+        When using a non-integer step, such as 0.1, it is often better to use `DynamicVector.linspace`.
+
+        Parameters:
+            start (int or float, optional): The starting value of the sequence, defaults to 0.
+            stop  (int or float):           The end value of the sequence.
+            step  (int or float, optional): The increment (step size). Defaults to 1.
+            dtype (type,         optional): The type of the output values. Defaults to `np.int32`.
+
+        Returns:
+            DynamicVector of evenly spaced dtype values from given start, stop, and step.
+
+        Examples:
+            DynamicVector.arange(5)              -> DynamicVector([0, 1, 2, 3, 4])
+            DynamicVector.arange(2, 5)           -> DynamicVector([2, 3, 4])
+            DynamicVector.arange(2, 10, step=2)  -> DynamicVector([2, 4, 6, 8])
+            DynamicVector.arange(0, 5, step=0.5) -> DynamicVector([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5])
+        """
+        narg = len(args)
+        if narg > 5:
+            raise TypeError(f"arange() takes from 0 to 5 positional arguments but {narg} were given")
+        if narg == 0 and stop is None:
+            raise TypeError("DynamicVector.arange() must specify at least one argument or use the `stop=` keyword.")
+        if narg == 1 and stop is not None:
+            raise TypeError("DynamicVector.arange() cannot specify 1 positional argument and the `stop=` keyword.")
+        if narg == 2 and (stop is not None or start is not None):
+            raise TypeError(
+                "DynamicVector.arange() cannot specify 2 positional arguments and the `stop=` or `start=` keywords."
+            )
+        if narg == 3 and (stop is not None or start is not None or step is not None):
+            raise TypeError(
+                "DynamicVector.arange() cannot specify 3 positional arguments "
+                "and the `stop=`,  `start=`, or `step=` keywords."
+            )
+        if narg == 4 and (stop is not None or start is not None or step is not None or dtype is not None):
+            raise TypeError(
+                "DynamicVector.arange() cannot specify 4 positional arguments "
+                "and the `stop=`,  `start=`, `step=`, or `dtype=` keywords."
+            )
+        if narg == 5 and (
+            stop is not None or start is not None or step is not None or dtype is not None or capacity is not None
+        ):
+            raise TypeError(
+                "DynamicVector.arange() cannot specify 5 positional arguments "
+                "and the `stop=`,  `start=`, `step=`, `dtype=`, or `capacity=` keywords."
+            )
+        # set up default values
+        if start is None:
+            start = 0
+        if step is None:
+            step = 1
+        if dtype is None:
+            dtype = np.int32
+        if capacity is None:
+            capacity = 8
+
+        if narg == 1:
+            stop = args[0]
+        elif narg == 2:
+            start, stop = args
+        elif narg == 3:
+            start, stop, step = args
+        elif narg == 4:
+            start, stop, step, dtype, capacity = args
+
+        tmp = np.arange(start, stop, step, dtype)
+        dim = tmp.size
+        capacity = max(dim, capacity)
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = dim
+        dyn._data[:dim] = tmp
+        return dyn
+
     @property
     def size(self) -> int:
         """Returns the current size of the vector."""
