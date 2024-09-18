@@ -33,6 +33,21 @@ __all__ = [
 _GROW_USE_ADD = 2**13  # Threshold capacity (8192), where growth switches to additive mode
 _GROW_ADD = 2**11  # Capacity to add when additive mode is active (2048)
 
+UNSUPPORTED_ATTRIBUTES = {
+    "fromfile",
+    "fromfunction",
+    "eye",
+    "r_",
+    "ogrid",
+    "mgrid",
+    "meshgrid",
+    "identity",
+    "atleast_1d",
+    "atleast_2d",
+    "atleast_3d",
+    "mat",
+}
+
 
 class DynamicVector:
     """
@@ -238,6 +253,9 @@ class DynamicVector:
 
         Returns:
             DynamicVector: A new dynamic vector initialized with the values from the input vector.
+
+        Examples:
+            DynamicVector.array([1,2,3])  -> DynamicVector([1,2,3])
         """
         try:
             if len(values) > capacity:
@@ -249,9 +267,9 @@ class DynamicVector:
             dtype = values.dtype
         except AttributeError:
             try:
-                dtype = type(values[0])
+                dtype = np.array(values[0]).dtype
             except IndexError:
-                raise ValueError("Either pass variable with dtype attribute, or len(values) must be greater than zero.")
+                raise TypeError("Either pass variable with dtype attribute, or len(values) must be greater than zero.")
 
         if isinstance(values, DynamicVector):
             if grow_use_add is None:
@@ -276,6 +294,9 @@ class DynamicVector:
 
         Returns:
             DynamicVector: A new dynamic vector initialized with the values from the input iterator.
+
+        Examples:
+            DynamicVector.array(iter([1,2,3]))  -> DynamicVector([1,2,3])
         """
         try:
             value = next(iterator)
@@ -286,10 +307,7 @@ class DynamicVector:
         try:
             dtype = value.dtype
         except AttributeError:
-            try:
-                dtype = type(value)
-            except IndexError:
-                raise ValueError("Iterator failed to identify dtype")
+            dtype = np.array(value).dtype
 
         if isinstance(iterator, DynamicVector):
             if grow_use_add is None:
@@ -304,28 +322,65 @@ class DynamicVector:
         return dyn
 
     @classmethod
-    def zeros(cls, *args, size=None, dtype=None, capacity=None, grow_use_add=None, grow_add=None):
+    def array(cls, object, dtype=None, capacity=8, grow_use_add=None, grow_add=None):
         """
-        Create a DynamicVector composed of `size` zero values with a specified data type (dtype).
+        Create a DynamicVector from the given object.
+        If dtype is given, then it overrides the dtype of the object.
+
+        DynamicVector.array(object, dtype=None, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            object (array_like):        Size and dtype of array used to build the DynamicVector.
+            dtype      (type, optional): The type of the full in the vector. Defaults to `np.array(fill_value).dtype`.
+            capacity  (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, len(object)).
+
+        Returns:
+            DynamicVector: A new dynamic vector initialized with the values from the input object.
+
+        Examples:
+            DynamicVector.array([1,2,3])  -> DynamicVector([1,2,3])
+            DynamicVector.array(3)  -> DynamicVector([3])
+        """
+        scalar_input = False
+        try:
+            size = len(object)
+        except TypeError:
+            try:
+                size = object.size
+            except (AttributeError, TypeError):
+                size = 1
+                scalar_input = True
+
+        if dtype is None:
+            try:
+                dtype = object.dtype
+            except AttributeError:
+                if scalar_input:
+                    dtype = np.array(object).dtype
+                else:
+                    dtype = np.array(object[0]).dtype
+
+        if capacity < size:
+            capacity = size
+
+        if isinstance(object, DynamicVector):
+            if grow_use_add is None:
+                grow_use_add = object.grow_use_add
+            if grow_add is None:
+                grow_add = object.grow_add
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = size
+        dyn._data[:size] = object
+        return dyn
+
+    @classmethod
+    def zeros(cls, size, dtype=None, capacity=8, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector with size elements set to zero.
         If dtype is not given, then it is set to `np.int32`.
 
         DynamicVector.zeros(size, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None)
-
-        `zeros` can be called with a varying number of positional arguments:
-
-        - `zeros(size)`:                    Creates a np.int32 vector that can hold `size` zeros
-        - `zeros(size, dtype)`:             Creates a `dtype`  vector that can hold `size` zeros
-        - `zeros(size, dtype, capacity)`    Creates a `dtype`  vector that can hold `size` zeros
-                                            with a minimum internal `capacity`.
-
-        `zeros` can also use keyword argument `size`, `dtype` and `capacity`.
-        However, if a positional argument of the same name is used, as described above,
-        then only the keywords that are not one of the position arguments names can be used.
-        Such as:
-
-        - `zeros(size)`:                    Cannot use the keyword  `size`.
-        - `zeros(size, dtype)`:             Cannot use the keywords `size`, `dtype`.
-        - `zeros(size, dtype, capacity)`    Cannot use the keywords `size`, `dtype`, `capacity`.
 
         Parameters:
             size     (int):            The number of zeros in the vector (size of DynamicVector).
@@ -336,28 +391,201 @@ class DynamicVector:
             DynamicVector of zeros with the given size, dtype, and capacity.
 
         Examples:
-            DynamicVector.zeros(5)              -> DynamicVector([0, 1, 2, 3, 4])
-            DynamicVector.zeros(2, 5)           -> DynamicVector([2, 3, 4])
-            DynamicVector.zeros(2, 10, step=2)  -> DynamicVector([2, 4, 6, 8])
-            DynamicVector.zeros(0, 5, step=0.5) -> DynamicVector([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5])
+            DynamicVector.zeros(5)              -> DynamicVector([0, 0, 0, 0, 0])
         """
-        narg = len(args)
-        if size is None and narg == 0:
-            raise TypeError("DynamicVector.zeros() must specify at least one argument or use the `size` keyword.")
-        if narg > 3:
-            raise TypeError(f"arange() takes from 0 to 3 positional arguments but {narg} were given")
 
-        if narg in (0, 1) and dtype is None:
+        if dtype is None:
             dtype = np.int32
-
-        if narg in (0, 1, 2) and capacity is None:
-            capacity = 8
 
         if capacity < size:
             capacity = size
 
         dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
         dyn._size = size
+        return dyn
+
+    @classmethod
+    def empty(cls, size, dtype=None, capacity=8, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector with size elements set to zero.
+        If dtype is not given, then it is set to `np.int32`.
+
+        DynamicVector.empty(size, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            size     (int):            The number of empty in the vector (size of DynamicVector).
+            dtype    (type, optional): The type of the empty in the vector. Defaults to `np.int32`.
+            capacity (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, size).
+
+        Returns:
+            DynamicVector of empty with the given size, dtype, and capacity.
+
+        Examples:
+            DynamicVector.empty(5)              -> DynamicVector([0, 0, 0, 0, 0])
+        """
+        return cls.zeros(size, dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+
+    @classmethod
+    def zeros_like(cls, prototype, capacity=8, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector of zeros with the same size and type as prototype.
+
+        DynamicVector.zeros_like(prototype, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            prototype (array_like):     Size and dtype of array used to build the DynamicVector.
+            capacity  (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, prototype.size).
+
+        Returns:
+            DynamicVector of zeros of same size and type as prototype.
+
+        Examples:
+            DynamicVector.zeros_like(np.array([1,2,3]))  -> DynamicVector([0, 0, 0])
+        """
+        try:
+            size = len(prototype)
+        except TypeError:
+            try:
+                size = prototype.size
+            except (AttributeError, TypeError):
+                raise TypeError("Unable to determine prototype size.")
+
+        try:
+            dtype = prototype.dtype
+        except AttributeError:
+            try:
+                dtype = type(prototype[0])
+            except IndexError:
+                raise TypeError("Unable to determine prototype dtype.")
+
+        if capacity < size:
+            capacity = size
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = size
+        return dyn
+
+    @classmethod
+    def empty_like(cls, prototype, capacity=8, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector of zeros with the same size and type as prototype.
+
+        DynamicVector.empty_like(prototype, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            prototype (array_like):     Size and dtype of array used to build the DynamicVector.
+            capacity  (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, prototype.size).
+
+        Returns:
+            DynamicVector of zeros of same size and type as prototype.
+
+        Examples:
+            DynamicVector.empty_like(np.array([1,2,3]))  -> DynamicVector([0, 0, 0])
+        """
+        return cls.zeros_like(prototype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+
+    @classmethod
+    def ones(cls, size, dtype=None, capacity=8, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector with size elements set to one.
+        If dtype is not given, then it is set to `np.int32`.
+
+        DynamicVector.ones(size, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            size     (int):            The number of ones in the vector (size of DynamicVector).
+            dtype    (type, optional): The type of the ones in the vector. Defaults to `np.int32`.
+            capacity (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, size).
+
+        Returns:
+            DynamicVector of zeros with the given size, dtype, and capacity.
+
+        Examples:
+            DynamicVector.zeros(5)              -> DynamicVector([0, 0, 0, 0, 0])
+        """
+
+        if dtype is None:
+            dtype = np.int32
+
+        if capacity < size:
+            capacity = size
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = size
+        dyn._data[:size] = 1
+        return dyn
+
+    @classmethod
+    def ones_like(cls, prototype, capacity=8, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector of ones with the same size and type as prototype.
+
+        DynamicVector.ones_like(prototype, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            prototype (array_like):     Size and dtype of array used to build the DynamicVector.
+            capacity  (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, prototype.size).
+
+        Returns:
+            DynamicVector of ones of same size and type as prototype.
+
+        Examples:
+            DynamicVector.ones_like(np.array([1,2,3]))  -> DynamicVector([0, 0, 0])
+        """
+        try:
+            size = len(prototype)
+        except TypeError:
+            try:
+                size = prototype.size
+            except (AttributeError, TypeError):
+                raise TypeError("Unable to determine prototype size.")
+
+        try:
+            dtype = prototype.dtype
+        except AttributeError:
+            try:
+                dtype = type(prototype[0])
+            except IndexError:
+                raise TypeError("Unable to determine prototype dtype.")
+
+        if capacity < size:
+            capacity = size
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = size
+        dyn._data[:size] = 1
+        return dyn
+
+    @classmethod
+    def full(cls, size, fill_value, dtype=None, capacity=8, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector composed of `size` values set to `fill_value`.
+        If `dtype` is not given, then it is set to `np.array(fill_value).dtype`.
+
+        DynamicVector.full(size, fill_value, dtype=np.dtype, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            size       (int):            The number of full in the vector (size of DynamicVector).
+            fill_value (int):            The value to fill the DynamicVector with.
+            dtype      (type, optional): The type of the full in the vector. Defaults to `np.array(fill_value).dtype`.
+            capacity   (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, size).
+
+        Returns:
+            DynamicVector with given size, filled with fill_value.
+
+        Examples:
+            DynamicVector.full(5, 3)           -> DynamicVector([3, 3, 3, 3, 3])
+        """
+
+        if dtype is None:
+            dtype = np.array(fill_value).dtype
+
+        if capacity < size:
+            capacity = size
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = size
+        dyn._data[:size] = fill_value
         return dyn
 
     @classmethod
@@ -368,27 +596,27 @@ class DynamicVector:
         Create a DynamicVector from evenly spaced values within a given interval
         and specified data type (dtype). If dtype is not given, then it is set to `np.int32`.
 
-        DynamicVector.zeros(start=1, stop, step=1, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None)
+        DynamicVector.arange(start=1, stop, step=1, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None)
 
         `arange` can be called with a varying number of positional arguments:
 
-        - `arange(stop)`:                    Values are generated within the half-open interval [0, stop)
-                                             (in other words, the interval including start but excluding stop).
-        - `arange(start, stop)`:             Values are generated within the half-open interval [start, stop).
-        - `arange(start, stop, step)`        Values are generated within the half-open interval [start, stop),
-                                             with spacing between values given by step.
-        - `arange(start, stop, step, dtype)` Values are generated within the half-open interval [start, stop),
-                                             with spacing between values given by step and has data type, dtype.
+        - `arange(stop)`:                     Values are generated within the half-open interval [0, stop)
+                                              (in other words, the interval including start but excluding stop).
+        - `arange(start, stop)`:              Values are generated within the half-open interval [start, stop).
+        - `arange(start, stop, step)`:        Values are generated within the half-open interval [start, stop),
+                                              with spacing between values given by step.
+        - `arange(start, stop, step, dtype)`: Values are generated within the half-open interval [start, stop),
+                                              with spacing between values given by step and has data type, dtype.
 
         `arange` can also use keyword argument `start`, `stop`, `step` and `dtype`.
         However, if a positional argument of the same name is used, as described above,
         then only the keywords that are not one of the position arguments names can be used.
         Such as:
 
-        - `arange(stop)`:                    Cannot use the keyword  `stop`.
-        - `arange(start, stop)`:             Cannot use the keywords `start`, `stop`.
-        - `arange(start, stop, step)`        Cannot use the keywords `start`, `stop`, `step`,.
-        - `arange(start, stop, step, dtype)` Cannot use the keywords `start`, `stop`, `step`, `dtype`.
+        - `arange(stop)`:                     Cannot use the keyword  `stop`.
+        - `arange(start, stop)`:              Cannot use the keywords `start`, `stop`.
+        - `arange(start, stop, step)`:        Cannot use the keywords `start`, `stop`, `step`,.
+        - `arange(start, stop, step, dtype)`: Cannot use the keywords `start`, `stop`, `step`, `dtype`.
 
         For integer arguments the function is roughly equivalent to the Python built-in range,
         but returns an DynamicVector rather than a range instance.
@@ -400,6 +628,7 @@ class DynamicVector:
             stop  (int or float):           The end value of the sequence.
             step  (int or float, optional): The increment (step size). Defaults to 1.
             dtype (type,         optional): The type of the output values. Defaults to `np.int32`.
+            capacity   (int,  optional):    Initial minimum capacity of the underlying storage vector. Defaults to 8.
 
         Returns:
             DynamicVector of evenly spaced dtype values from given start, stop, and step.
@@ -410,56 +639,187 @@ class DynamicVector:
             DynamicVector.arange(2, 10, step=2)  -> DynamicVector([2, 4, 6, 8])
             DynamicVector.arange(0, 5, step=0.5) -> DynamicVector([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5])
         """
-        narg = len(args)
-        if narg > 5:
-            raise TypeError(f"arange() takes from 0 to 5 positional arguments but {narg} were given")
-        if narg == 0 and stop is None:
-            raise TypeError("DynamicVector.arange() must specify at least one argument or use the `stop=` keyword.")
-        if narg == 1 and stop is not None:
-            raise TypeError("DynamicVector.arange() cannot specify 1 positional argument and the `stop=` keyword.")
-        if narg == 2 and (stop is not None or start is not None):
-            raise TypeError(
-                "DynamicVector.arange() cannot specify 2 positional arguments and the `stop=` or `start=` keywords."
-            )
-        if narg == 3 and (stop is not None or start is not None or step is not None):
-            raise TypeError(
-                "DynamicVector.arange() cannot specify 3 positional arguments "
-                "and the `stop=`,  `start=`, or `step=` keywords."
-            )
-        if narg == 4 and (stop is not None or start is not None or step is not None or dtype is not None):
-            raise TypeError(
-                "DynamicVector.arange() cannot specify 4 positional arguments "
-                "and the `stop=`,  `start=`, `step=`, or `dtype=` keywords."
-            )
-        if narg == 5 and (
-            stop is not None or start is not None or step is not None or dtype is not None or capacity is not None
-        ):
-            raise TypeError(
-                "DynamicVector.arange() cannot specify 5 positional arguments "
-                "and the `stop=`,  `start=`, `step=`, `dtype=`, or `capacity=` keywords."
-            )
-        # set up default values
-        if start is None:
-            start = 0
-        if step is None:
+        if len(args) > 5:
+            raise TypeError(f"arange() takes from 0 to 5 positional arguments but {len(args)} were given")
+
+        args[::-1]
+        if len(args) == 1:
+            if stop is None:
+                stop = args.pop()
+                if start is None:
+                    start = 0
+            elif start is None:
+                start = args.pop()
+        elif len(args) > 1:
+            if start is None:
+                start = args.pop()
+            if stop is None and len(args) > 0:
+                stop = args.pop()
+
+        if stop is None:
+            raise TypeError("DynamicVector.arange() must specify `stop`.")
+
+        if step is None and len(args) > 0:
+            step = args.pop()
+        elif step is None:
             step = 1
-        if dtype is None:
+
+        if dtype is None and len(args) > 0:
+            dtype = args.pop()
+        elif dtype is None:
             dtype = np.int32
-        if capacity is None:
+
+        if capacity is None and len(args) > 0:
+            capacity = args.pop()
+        elif capacity is None:
             capacity = 8
 
-        if narg == 1:
-            stop = args[0]
-        elif narg == 2:
-            start, stop = args
-        elif narg == 3:
-            start, stop, step = args
-        elif narg == 4:
-            start, stop, step, dtype, capacity = args
+        if len(args) > 0:
+            raise TypeError(
+                "DynamicVector.arange() incorrect arguments passed.\n"
+                "`start`, `stop`, `step`, `dtype`, `capacity` can be a positional argument or keyword argument, but not both.\n"
+            )
 
         tmp = np.arange(start, stop, step, dtype)
         dim = tmp.size
         capacity = max(dim, capacity)
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = dim
+        dyn._data[:dim] = tmp
+        return dyn
+
+    @classmethod
+    def linspace(
+        cls,
+        start,
+        stop,
+        num=50,
+        endpoint=True,
+        retstep=False,
+        dtype=None,
+        capacity=8,
+        *,
+        grow_use_add=None,
+        grow_add=None,
+    ):
+        """
+        Create a DynamicVector evenly spaced numbers over a specified interval.
+        and specified data type (dtype). If dtype is not given, the data type is inferred from start and stop.
+
+        DynamicVector.arange(start, stop, num=50, endpoint=True, retstep=False, dtype=inferred, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            start (int or float):      The starting value of the sequence.
+            stop  (int or float):      The end value of the sequence, unless endpoint is set to False.
+            num      (int, optional):  Number of samples to generate. Default is 50. Must be non-negative.
+            retstep  (bool, optional): If True, stop is the last sample. Otherwise, it is not included. Default is True.
+            dtype    (type, optional): The type of the output array. If dtype is not given, the data type is inferred from start and stop.
+            capacity (int, optional):  Initial minimum capacity of the underlying storage vector. Defaults to 8.
+
+        Returns:
+            DynamicVector of num equally spaced samples in the closed interval [start, stop]
+            or the half-open interval [start, stop) (depending on whether endpoint is True or False).
+
+            May also return size of spacing between samples, if retstep is True.
+
+        """
+
+        tmp = np.linspace(start, stop, num, endpoint, retstep, dtype)
+        if retstep:
+            tmp, step = tmp
+        dim = tmp.size
+
+        if capacity < dim:
+            capacity = dim
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = dim
+        dyn._data[:dim] = tmp
+        if retstep:
+            return dyn, step
+        else:
+            return dyn
+
+    @classmethod
+    def geomspace(
+        cls,
+        start,
+        stop,
+        num=50,
+        endpoint=True,
+        dtype=None,
+        capacity=8,
+        *,
+        grow_use_add=None,
+        grow_add=None,
+    ):
+        """
+        Create a DynamicVector numbers spaced evenly on a log scale (a geometric progression).
+        If dtype is not given, the data type is inferred from start and stop.
+
+        DynamicVector.arange(start, stop, num=50, endpoint=True, dtype=inferred, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            start (int or float):      The starting value of the sequence.
+            stop  (int or float):      The end value of the sequence, unless endpoint is set to False.
+            num      (int, optional):  Number of samples to generate. Default is 50. Must be non-negative.
+            dtype    (type, optional): The type of the output array. If dtype is not given, the data type is inferred from start and stop.
+            capacity (int, optional):  Initial minimum capacity of the underlying storage vector. Defaults to 8.
+
+        Returns:
+            DynamicVector of num samples, equally spaced on a log scale.
+
+        """
+        tmp = np.geomspace(start, stop, num, endpoint, dtype)
+        dim = tmp.size
+
+        if capacity < dim:
+            capacity = dim
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = dim
+        dyn._data[:dim] = tmp
+        return dyn
+
+    @classmethod
+    def logspace(
+        cls,
+        start,
+        stop,
+        num=50,
+        endpoint=True,
+        base=10.0,
+        dtype=None,
+        capacity=8,
+        *,
+        grow_use_add=None,
+        grow_add=None,
+    ):
+        """
+        Create a DynamicVector numbers spaced evenly on a log scale.
+        If dtype is not given, the data type is inferred from start and stop.
+
+        DynamicVector.arange(start, stop, num=50, endpoint=True, base=10.0, dtype=inferred, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        Parameters:
+            start (int or float):      The starting value of the sequence.
+            stop  (int or float):      The end value of the sequence, unless endpoint is set to False.
+            num      (int, optional):  Number of samples to generate. Default is 50. Must be non-negative.
+            base   (float, optional):  The base of the log space. The step size between the elements in
+                                       ln(samples) / ln(base) (or log_base(samples)) is uniform. Default is 10.0.
+            dtype    (type, optional): The type of the output array. If dtype is not given, the data type is inferred from start and stop.
+            capacity (int, optional):  Initial minimum capacity of the underlying storage vector. Defaults to 8.
+
+        Returns:
+            DynamicVector of num samples, equally spaced on a log scale.
+
+        """
+        tmp = np.logspace(start, stop, num, endpoint, base, dtype)
+        dim = tmp.size
+
+        if capacity < dim:
+            capacity = dim
 
         dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
         dyn._size = dim
@@ -1061,6 +1421,9 @@ class DynamicVector:
         Raises:
             AttributeError: If the attribute does not exist in `self` or `self.view`.
         """
+        if name in UNSUPPORTED_ATTRIBUTES:
+            raise AttributeError(f"'DynamicVector' object does not support: {name}'")
+
         try:
             # Forward any unknown attribute to the NumPy component
             attr = getattr(self._data[: self._size], name)  # self.view = self._data[: self._size]
