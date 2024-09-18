@@ -37,20 +37,157 @@ _GROW_ADD = 2**11  # Capacity to add when additive mode is active (2048)
 class DynamicVector:
     """
     A dynamic vector implementation using NumPy arrays, with dynamic resizing capabilities.
-    The vector grows in capacity using powers of two until it exceeds a certain threshold,
-    after which it grows by a fixed amount.
+    The dynamic vector includes fast appending and popping, like a list,
+    while retaining numpy array index support and vector operations.
+
+    The dynamic vector supports most of the python list and numpy.ndarray methods.
+
+    The storage of the vector automatically grows in capacity by doubling it
+    until the capacity exceeds a certain threshold (`grow_use_add`),
+    after which it grows by a fixed amount (`grow_add`).
+
+    For example, given a dynamic vector that has an initial capacity of 8
+    and contains seven values (size=7). If another value is appended (size=8),
+    then the capacity is increased to 16 (from 2*8) to hold the extra value.
+
+    Args:
+        dtype (np.dtype, optional):   numpy.dtype (data type) of the vector elements. Defaults to np.int32.
+        capacity (int, optional):     Initial capacity of the vector. Defaults to 8.
+        grow_use_add (int, optional): Threshold to switch from multiplicative to additive growth. Defaults to 8192.
+        grow_add (int, optional):     Additive increment in additive growth mode. Defaults to 2048.
 
     Attributes:
-        _size (int): The current number of elements in the vector.
-        _cap (int): The current capacity of the underlying array.
-        _data (np.ndarray): The underlying NumPy array that stores the elements.
-        _dtype (np.dtype): The data type of the array elements.
+        size (int):         The size of the dynamic vector.
+        view (np.ndarray):  A np.ndarray view of the dynamic vector.
+        dtype (np.dtype):   The numpy.dtype (data type) of the vector.
+
+        capacity (int):     The capacity of the underlying vector storage.
+        grow_use_add (int): Threshold that growth switches from multiplicative to additive growth.
+        grow_add (int):     Additive increment in additive growth mode.
+
+    Constructors:
+        from_values(values): Create a DynamicVector from an iterable of values.
+
+        from_iter(iterator): Create a DynamicVector from an iterator.
+
+    Methods:
+
+        append(value):
+            Append a value to the end of the vector.
+
+        extend(values):
+            Append multiple values to the vector.
+
+        insert(index, value):
+            Insert a value at a specified index.
+
+        insert_values(index, values):
+            Insert multiple values at a specified index.
+
+        pop(index=-1):
+            Remove and return an element at a specified index (default is the last).
+
+        remove(value, remove_all=False, from_right=False):
+            Remove one or more occurrences of a value.
+
+        drop(index=-1):
+            Remove an element at a specified index.
+
+        count(value):
+            Count occurrences of a value.
+
+        sort(reverse=False, kind=None):
+            Sort the vector in ascending or descending order.
+
+        reverse():
+            Reverse the order of elements in the vector.
+
+        contains(value):
+            Check if a value exists in the vector.
+
+        copy(min_capacity=8):
+            Create a copy of the vector.
+
+        clear():
+            Remove all elements from the vector.
+
+        abs(where=True):
+            Compute the absolute value of all elements.
+
+        where(value):
+            Get the indices of elements equal to a value.
+
+        index(value, from_right=False):
+            Get the index of a value in the vector.
+
+        resize(size):
+            Resize the vector to a specified size.
+
+        increase_size(increase_by):
+            Increase the size of the vector by a specified amount.
+
+        set_capacity(min_capacity):
+            Ensure the vector's capacity is at least a given value.
+
+        force_capacity(min_capacity):
+            Set the capacity to the smallest power of two exceeding min_capacity.
+
+        is_equal(other):
+            Check if all elements are equal to those in another vector or value.
+
+        is_less(other):
+            Check if all elements are less than those in another vector or value.
+
+        is_greater(other):
+            Check if all elements are greater than those in another vector or value.
+
+        is_less_or_equal(other):
+            Check if all elements are less than or equal to those in another vector or value.
+
+        is_greater_or_equal(other):
+            Check if all elements are greater than or equal to those in another vector or value.
+
+        is_not_equal(other):
+            Check if all elements are not equal to those in another vector or value.
+
+
+    Example usage:
+        >>>
+        >>> from DynamicVector import DynamicVector
+        >>>
+        >>> vec = DynamicVector(dtype=np.int32, capacity=4)
+        >>>
+        >>> vec.append(10)
+        >>> vec.append(20)
+        >>>
+        >>> vec.extend([30, 40, 50])
+        >>>
+        >>> print(vec)
+        DynamicVector([10, 20, 30, 40, 50])
+        >>>
+        >>> print(vec[2])     # vec[2] returns np.int32(20)
+        30
+        >>> print(vec[1:4])   # vec[1:4] returns a np.ndarray view of vector
+        [20 30 40]
+        >>>
+        >>> vec.sort()        # inplace sort
+        >>>
+        >>> print(f"Size: {vec.size}, Capacity: {vec.capacity}")
+        Size: 5, Capacity: 8
+        >>>
+        >>> vec.pop()         # Remove the last element
+        >>>
+        >>> vec.clear()       # Clear the vector (vec.size = 0)
+
+    Notes:
+    - The vector automatically resizes when needed, and it uses multiplicative growth until a specified threshold.
+    - After reaching the threshold, the growth becomes additive.
     """
 
-    _size: int
-    _cap: int
-    _data: np.ndarray
-    _dtype: np.dtype
+    _size: int  # The current number of elements in the vector.
+    _cap: int  # The current capacity of the underlying np.ndarray.
+    _data: np.ndarray  # The underlying NumPy array that stores the elements.
+    _dtype: np.dtype  # The data type of the array elements.
 
     def __init__(self, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None):
         """
