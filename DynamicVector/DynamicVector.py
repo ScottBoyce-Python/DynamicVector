@@ -226,20 +226,22 @@ class DynamicVector:
         # self._zero = self._data[0]
 
     @classmethod
-    def from_values(cls, values, *, grow_use_add=None, grow_add=None):
+    def from_values(cls, values, capacity=8, *, grow_use_add=None, grow_add=None):
         """
         Create a DynamicVector from an existing vector.
 
         Parameters:
-            values (sequence): The source array to initialize the vector.
+            values (sequence):            The source array to initialize the vector.
+            capacity (int, optional):     Initial minimum capacity of the underlying storage vector. Defaults to max(8, len(values)).
             grow_use_add (int, optional): Custom threshold to switch from multiplicative to additive growth.
-            grow_add (int, optional): Custom value for additive growth.
+            grow_add (int, optional):     Custom value for additive growth.
 
         Returns:
             DynamicVector: A new dynamic vector initialized with the values from the input vector.
         """
         try:
-            capacity = len(values)
+            if len(values) > capacity:
+                capacity = len(values)
         except TypeError:
             return cls.from_iter(values, grow_use_add, grow_add)
 
@@ -262,14 +264,15 @@ class DynamicVector:
         return dyn
 
     @classmethod
-    def from_iter(cls, iterator, *, grow_use_add=None, grow_add=None):
+    def from_iter(cls, iterator, capacity=8, *, grow_use_add=None, grow_add=None):
         """
         Create a DynamicVector from an iterator.
 
         Parameters:
-            iterator (iterator): The source iterator to initialize the vector.
+            iterator (iterator):          The source iterator to initialize the vector.
+            capacity (int, optional):     Initial minimum capacity of the underlying storage vector. Defaults to 8.
             grow_use_add (int, optional): Custom threshold to switch from multiplicative to additive growth.
-            grow_add (int, optional): Custom value for additive growth.
+            grow_add (int, optional):     Custom value for additive growth.
 
         Returns:
             DynamicVector: A new dynamic vector initialized with the values from the input iterator.
@@ -294,7 +297,7 @@ class DynamicVector:
             if grow_add is None:
                 grow_add = iterator.grow_add
 
-        dyn = cls(dtype, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
         dyn.append(value)
         for value in iterator:
             dyn.append(value)
