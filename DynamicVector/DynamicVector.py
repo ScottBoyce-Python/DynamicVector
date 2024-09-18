@@ -303,6 +303,63 @@ class DynamicVector:
             dyn.append(value)
         return dyn
 
+    @classmethod
+    def zeros(cls, *args, size=None, dtype=None, capacity=None, grow_use_add=None, grow_add=None):
+        """
+        Create a DynamicVector composed of `size` zero values with a specified data type (dtype).
+        If dtype is not given, then it is set to `np.int32`.
+
+        DynamicVector.zeros(size, dtype=np.int32, capacity=8, *, grow_use_add=None, grow_add=None)
+
+        `zeros` can be called with a varying number of positional arguments:
+
+        - `zeros(size)`:                    Creates a np.int32 vector that can hold `size` zeros
+        - `zeros(size, dtype)`:             Creates a `dtype`  vector that can hold `size` zeros
+        - `zeros(size, dtype, capacity)`    Creates a `dtype`  vector that can hold `size` zeros
+                                            with a minimum internal `capacity`.
+
+        `zeros` can also use keyword argument `size`, `dtype` and `capacity`.
+        However, if a positional argument of the same name is used, as described above,
+        then only the keywords that are not one of the position arguments names can be used.
+        Such as:
+
+        - `zeros(size)`:                    Cannot use the keyword  `size`.
+        - `zeros(size, dtype)`:             Cannot use the keywords `size`, `dtype`.
+        - `zeros(size, dtype, capacity)`    Cannot use the keywords `size`, `dtype`, `capacity`.
+
+        Parameters:
+            size     (int):            The number of zeros in the vector (size of DynamicVector).
+            dtype    (type, optional): The type of the zeros in the vector. Defaults to `np.int32`.
+            capacity (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, size).
+
+        Returns:
+            DynamicVector of zeros with the given size, dtype, and capacity.
+
+        Examples:
+            DynamicVector.zeros(5)              -> DynamicVector([0, 1, 2, 3, 4])
+            DynamicVector.zeros(2, 5)           -> DynamicVector([2, 3, 4])
+            DynamicVector.zeros(2, 10, step=2)  -> DynamicVector([2, 4, 6, 8])
+            DynamicVector.zeros(0, 5, step=0.5) -> DynamicVector([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5])
+        """
+        narg = len(args)
+        if size is None and narg == 0:
+            raise TypeError("DynamicVector.zeros() must specify at least one argument or use the `size` keyword.")
+        if narg > 3:
+            raise TypeError(f"arange() takes from 0 to 3 positional arguments but {narg} were given")
+
+        if narg in (0, 1) and dtype is None:
+            dtype = np.int32
+
+        if narg in (0, 1, 2) and capacity is None:
+            capacity = 8
+
+        if capacity < size:
+            capacity = size
+
+        dyn = cls(dtype, capacity, grow_use_add=grow_use_add, grow_add=grow_add)
+        dyn._size = size
+        return dyn
+
     @property
     def size(self) -> int:
         """Returns the current size of the vector."""
