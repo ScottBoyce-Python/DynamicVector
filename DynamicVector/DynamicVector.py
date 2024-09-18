@@ -40,7 +40,8 @@ class DynamicVector:
     The dynamic vector includes fast appending and popping, like a list,
     while retaining numpy array index support and vector operations.
 
-    The dynamic vector supports most of the python list and numpy.ndarray methods.
+    The dynamic vector support the python list methods and numpy.ndarray 1D array methods.
+    For access to all the numpy methods, a view of the vector as a numpy.ndarray can be returned.
 
     The storage of the vector automatically grows in capacity by doubling it
     until the capacity exceeds a certain threshold (`grow_use_add`),
@@ -52,16 +53,16 @@ class DynamicVector:
 
     Args:
         dtype (np.dtype, optional):   numpy.dtype (data type) of the vector elements. Defaults to np.int32.
-        capacity (int, optional):     Initial capacity of the vector. Defaults to 8.
+        capacity (int, optional):     Initial minimum capacity of the underlying storage vector. Defaults to 8.
         grow_use_add (int, optional): Threshold to switch from multiplicative to additive growth. Defaults to 8192.
         grow_add (int, optional):     Additive increment in additive growth mode. Defaults to 2048.
 
     Attributes:
         size (int):         The size of the dynamic vector.
-        view (np.ndarray):  A np.ndarray view of the dynamic vector.
+        view (np.ndarray):  A np.ndarray view of the dynamic vector at its current size.
         dtype (np.dtype):   The numpy.dtype (data type) of the vector.
 
-        capacity (int):     The capacity of the underlying vector storage.
+        capacity (int):     The capacity of the underlying vector storage (note, `size <= capacity`).
         grow_use_add (int): Threshold that growth switches from multiplicative to additive growth.
         grow_add (int):     Additive increment in additive growth mode.
 
@@ -182,6 +183,8 @@ class DynamicVector:
     Notes:
     - The vector automatically resizes when needed, and it uses multiplicative growth until a specified threshold.
     - After reaching the threshold, the growth becomes additive.
+    - A variable set to the view of the vector does not change size when the DynamicVector changes size.
+    - Size is always less than or equal to capacity.
     """
 
     _size: int  # The current number of elements in the vector.
@@ -194,10 +197,10 @@ class DynamicVector:
         Initialize the DynamicVector.
 
         Parameters:
-            dtype (np.dtype): The data type of the elements (int32 by default).
-            capacity (int): The initial capacity of the vector. Defaults to 8.
-            grow_use_add (int, optional): Custom threshold to switch from multiplicative to additive growth.
-            grow_add (int, optional): Custom value for additive growth.
+            dtype (np.dtype, optional):   numpy.dtype (data type) of the vector elements. Defaults to np.int32.
+            capacity (int, optional):     Initial minimum capacity of the underlying storage vector. Defaults to 8.
+            grow_use_add (int, optional): Threshold to switch from multiplicative to additive growth. Defaults to 8192.
+            grow_add (int, optional):     Additive increment in additive growth mode. Defaults to 2048.
         """
         if grow_use_add is None:
             self._grow_use_add = _GROW_USE_ADD
