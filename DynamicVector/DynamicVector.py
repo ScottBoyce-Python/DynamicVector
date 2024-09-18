@@ -83,7 +83,7 @@ class DynamicVector:
         self._setup_capacity(capacity)  # increase self._cap to meet capacity
         self._data = np.zeros(self._cap, dtype=dtype)
         self._dtype = self._data.dtype
-        self._zero = self._data[0]
+        # self._zero = self._data[0]
 
     @classmethod
     def from_values(cls, values, *, grow_use_add=None, grow_add=None):
@@ -190,7 +190,7 @@ class DynamicVector:
 
     @property
     def dtype(self) -> np.dtype:
-        """Returns the data type of the vector."""
+        """Returns the numpy.dtype (data type) of the vector."""
         return self._dtype
 
     @property
@@ -209,6 +209,10 @@ class DynamicVector:
 
         Parameters:
             value: The value to be appended.
+
+        Notes:
+            1) Appending an item has a minimal performance penalty if size < capacity.
+               If size == capacity, then the vector is reallocated to increase capacity.
         """
         if self._size >= self._cap:
             self._grow_data(self._size + 1)
@@ -223,6 +227,10 @@ class DynamicVector:
 
         Parameters:
             values (iterable): The values to append to the vector.
+
+        Notes:
+            1) Extending an item has a minimal performance penalty if size + len(values) < capacity.
+               If size + len(values) >= capacity, then the vector is reallocated to increase capacity.
         """
         try:
             new_size = self._size + len(values)
@@ -287,7 +295,17 @@ class DynamicVector:
         self._size = new_size
 
     def remove(self, value, remove_all=False, from_right=False) -> bool:
-        # remove value from array, return true if one or more values found
+        """
+        Remove the first or all occurrences of a value from the vector.
+
+        Parameters:
+            value: The value to be removed.
+            remove_all (bool): If True, remove all occurrences of value. Default is False.
+            from_right (bool): If True, remove the rightmost occurrence. Default is False.
+
+        Returns:
+            bool: True if at least one occurrence was removed, False otherwise.
+        """
         if self._size < 1:
             return False
 
@@ -308,6 +326,20 @@ class DynamicVector:
         return True
 
     def pop(self, index=-1, return_None=False):
+        """
+        Remove and return the item at the given index. If no index is specified, removes and returns the last item.
+
+        Parameters:
+            index (int): The position of the item to be removed. Defaults to -1 (the last item).
+            return_None (bool): If True, return None instead of raising an IndexError when popping from an empty vector.
+
+        Returns:
+            The value at the specified index, or None if return_None is True and the vector is empty.
+
+        Notes:
+            1) Removing the last item has no performance penalty as it doesn't require shifting array elements.
+            2) Popping from an empty vector with `return_None=False` raises an IndexError.
+        """
         if isinstance(index, (int, np.integer, np.unsignedinteger)):
             if self._size < 1:
                 if return_None:
@@ -335,6 +367,19 @@ class DynamicVector:
         return popped
 
     def drop(self, index=-1):
+        """
+        Remove the element at the given index or indices.
+
+        If a list-like set of indices are provided, the elements are removed in
+        descending order (largest index first), ensuring that all the requested
+        indices are removed correctly.
+
+        Parameters:
+            index (int or list-like): The index or indices of the elements to remove. Defaults to -1 (last element).
+
+        Notes:
+            1) Removing the last item has no performance penalty as it doesn't require shifting array elements.
+        """
         if self._size < 1:
             return
 
@@ -361,15 +406,26 @@ class DynamicVector:
                     self._data[p : self._size] = self._data[p + 1 : self._size + 1]
 
     def count(self, value) -> int:
+        """
+        Count the number of occurrences of a value in the vector.
+
+        Parameters:
+            value: The value to count.
+
+        Returns:
+            int: The number of occurrences of the value.
+        """
         return len(self.where(value))
 
     def sort(self, reverse=False, kind=None):
-        """Sort array in place in ascending order.
-        kind can be set to quicksort, heapsort, or stable
-        Sorting algorithm. The default is quicksort.
-        reverse returns sorted array in descending order
         """
-        if self._size < 2:
+        Sort the vector in place in ascending order by default.
+
+        Parameters:
+            reverse (bool): If True, the vector is sorted in descending order. Defaults to False.
+            kind (str): The sorting algorithm to use. Options are 'quicksort', 'heapsort', and 'stable'. Defaults to 'quicksort'.
+        """
+        if self._size < 1:
             return
         self._data[: self._size].sort(kind=kind)
 
@@ -377,25 +433,65 @@ class DynamicVector:
             self._reverse_in_place(self._data[: self._size])
 
     def reverse(self):
+        """
+        Reverse the order of elements in the vector.
+        """
         self._reverse_in_place(self._data[: self._size])
 
     def contains(self, value) -> bool:
+        """
+        Check if the vector contains the specified value.
+        `self.contains(value)` is equivalent to `value in self`
+
+        Parameters:
+            value: The value to check for.
+
+        Returns:
+            bool: True if the value is found in the vector, False otherwise.
+        """
         return value in self._data[: self._size]
 
     def copy(self, min_capacity=8):
+        """
+        Create a copy of the current vector.
+
+        Parameters:
+            min_capacity (int): The minimum capacity of the copied vector. Defaults to 8.
+
+        Returns:
+            DynamicVector: A new vector that is a copy of the current vector.
+        """
         capacity = self._size if min_capacity < self._size else min_capacity
         dyn = DynamicVector(self._dtype, capacity, grow_use_add=self._grow_use_add, grow_add=self._grow_add)
         dyn.extend(self._data[: self._size])
         return dyn
 
     def clear(self):
+        """
+        Clear the vector, removing all elements and resetting its size to zero.
+        """
         self._size = 0
 
     def abs(self, where=True):
+        """
+        Compute the absolute value of the elements in the vector in place.
+
+        Parameters:
+            where (bool): A boolean mask specifying where to compute the absolute values. Default is True (apply to all elements).
+        """
         vec = self._data[: self._size]
         np.absolute(vec, out=vec, where=where)
 
     def where(self, value):
+        """
+        Find the indices of all occurrences of the specified value in the vector.
+
+        Parameters:
+            value: The value to search for.
+
+        Returns:
+            np.ndarray: An array of indices where the value occurs in the vector.
+        """
         return np.where(self._data[: self._size] == value)[0]
 
     def index(self, value, from_right=False) -> np.integer:
@@ -409,22 +505,74 @@ class DynamicVector:
         return p[0]
 
     def resize(self, size: int):
-        if size < self._size:
-            self._data[size : self._size] = self._zero
-        elif size > self._cap:
+        """
+        Change the size of the vector.
+
+        Note that resizing only changes the size of the vector
+        and not the values stored in it. It is not recommended to
+        rely on the values stored outside of the size of the vector
+        as they will be overwritten with append and insert operations.
+
+
+        The increased part of the vector has an undefined behavior until assigned a value.
+        It will not raise an error, but the value stored in the new locations
+        is either a previously stored value or zero.
+
+        Parameters:
+            size (int): The new size of the vector.
+
+        Notes:
+            1) Resizing has no performance penalty as long as it is less than the capacity.
+               Otherwise, it will require a reallocation to increase the array capacity.
+        """
+        if size < 0:
+            self.clear()
+            return
+
+        # if size < self._size:
+        #     self._data[size : self._size] = self._zero
+        if size > self._cap:
             self._grow_data(size)
         self._size = size
 
     def increase_size(self, increase_by: int):
+        """
+        Increase the size of the vector by a specified amount.
+        The increased part of the vector has an undefined behavior until assigned a value.
+        It will not raise an error, but the value stored in the new locations
+        is either a previously stored value or zero.
+
+        Parameters:
+            increase_by (int): The number of elements to increase the vector's size by.
+
+        Notes:
+            1) Increasing the size has no performance penalty as long as it is less than the capacity.
+               Otherwise, it will require a reallocation to increase the array capacity.
+
+        """
         self.resize(self._size + increase_by)
 
     def set_capacity(self, min_capacity):
-        # set capacity to a power of 2 that exceeds min_capacity
+        """
+        Ensures that the vector capacity is at least min_capacity.
+
+        Note, if the capacity is changed, then it is set to
+        the smallest power of two that exceeds min_capacity.
+
+        Parameters:
+            min_capacity (int): The minimum capacity the vector should support.
+        """
         if min_capacity > self._cap:
             self._grow_data(min_capacity)
 
     def force_capacity(self, min_capacity):
-        # set capacity be smallest power of two that exceeds min_capacity
+        """
+        Set the capacity of the vector to the smallest power of two
+        that exceeds the specified minimum capacity.
+
+        Parameters:
+            min_capacity (int): The minimum capacity the vector should support.
+        """
         if min_capacity == self._cap:
             return
 
@@ -446,21 +594,105 @@ class DynamicVector:
         self._data = tmp
 
     def is_equal(self, other) -> bool:
+        """
+        Check if all elements in the vector are equal to the
+        corresponding elements in another array or single value.
+        If the array is a different size, then returns False.
+
+        Parameters:
+            other (value or array-like): The array to compare with.
+
+        Returns:
+            bool: True if all elements are equal, False otherwise.
+        """
+        try:
+            if len(other) != self._size:
+                return False
+        except TypeError:
+            pass
         return np.all(self.view == other)
 
     def is_less(self, other) -> bool:
+        """
+        Check if all elements in the vector are less than
+        the corresponding elements in another array or single value.
+
+        Parameters:
+            other (value or array-like): The array to compare with.
+
+        Returns:
+            bool: True if all elements are less, False otherwise.
+
+        Notes:
+            1) If len(array-like) != len(self), then a TypeError is raised.
+        """
         return np.all(self.view < other)
 
     def is_greater(self, other) -> bool:
+        """
+        Check if all elements in the vector are greater than
+        the corresponding elements in another array or single value.
+
+        Parameters:
+            other (value or array-like): The array to compare with.
+
+        Returns:
+            bool: True if all elements are greater, False otherwise.
+
+        Notes:
+            1) If len(array-like) != len(self), then a TypeError is raised.
+        """
         return np.all(self.view > other)
 
     def is_less_or_equal(self, other) -> bool:
+        """
+        Check if all elements in the vector are less than or equal to
+        the corresponding elements in another array or single value.
+
+        Parameters:
+            other (value or array-like): The array to compare with.
+
+        Returns:
+            bool: True if all elements are less than or equal to, False otherwise.
+
+        Notes:
+            1) If len(array-like) != len(self), then a TypeError is raised.
+        """
         return np.all(self.view <= other)
 
     def is_greater_or_equal(self, other) -> bool:
+        """
+        Check if all elements in the vector are greater than or equal to
+        the corresponding elements in another array or single value.
+
+        Parameters:
+            other (value or array-like): The array to compare with.
+
+        Returns:
+            bool: True if all elements are greater than or equal to, False otherwise.
+
+        Notes:
+            1) If len(array-like) != len(self), then a TypeError is raised.
+        """
         return np.all(self.view >= other)
 
     def is_not_equal(self, other) -> bool:
+        """
+        Check if all elements in the vector are NOT equal to the
+        corresponding elements in another array or single value.
+        If the array is a different size, then returns True.
+
+        Parameters:
+            other (value or array-like): The array to compare with.
+
+        Returns:
+            bool: True if all elements are equal, False otherwise.
+        """
+        try:
+            if len(other) != self._size:
+                return True
+        except TypeError:
+            pass
         return np.all(self.view != other)
 
     def __getitem__(self, index):
@@ -731,7 +963,16 @@ class DynamicVector:
         return index
 
     def _slice_to_range(self, sl: slice, same_order=False):
-        # given a slice, convert to descending order range
+        """
+        Convert a slice object to a range of indices.
+
+        Parameters:
+            sl (slice): The slice to convert.
+            same_order (bool): If True, preserve the order of the slice. Defaults to False (descending order).
+
+        Returns:
+            range: A range of indices corresponding to the slice.
+        """
         start = 0 if sl.start is None else sl.start
         stop = self._size if sl.stop is None else sl.stop
         step = 1 if sl.step is None else sl.step
@@ -752,6 +993,13 @@ class DynamicVector:
         return range(stop - 1, start - 1, -step)
 
     def _grow_data(self, min_capacity):
+        """
+        Increase the internal storage capacity of the vector
+        to accommodate at least the specified minimum capacity.
+
+        Parameters:
+            min_capacity (int): The minimum capacity the vector should have after growth.
+        """
         self._setup_capacity(min_capacity)
         old_cap = len(self._data)
         if old_cap < self._cap:  # should always be true
@@ -762,6 +1010,14 @@ class DynamicVector:
             self._cap = old_cap
 
     def _setup_capacity(self, min_capacity):
+        """
+        Adjust the vector's internal capacity variable (self._cap)
+        to be a power of two or incrementally increase it
+        if necessary, to meet or exceed the specified minimum capacity.
+
+        Parameters:
+            min_capacity (int): The minimum capacity the vector must support.
+        """
         while self._cap < min_capacity:
             if self._cap < self._grow_use_add:
                 self._cap <<= 1
