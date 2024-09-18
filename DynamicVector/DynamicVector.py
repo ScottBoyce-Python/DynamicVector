@@ -881,6 +881,33 @@ class DynamicVector:
 
         self._data[: self._size][index] = value
 
+    def __getattr__(self, name):
+        """
+        Handles unknown attributes by forwarding them to the NumPy.ndarray that holds the vector.
+        This allows the DynamicVector to support NumPy attributes such as `shape`, `dtype`, etc.
+
+        Parameters:
+            name (str): The name of the missing attribute.
+
+        Returns:
+            The value of the attribute from `self.view`.
+
+        Raises:
+            AttributeError: If the attribute does not exist in `self` or `self.view`.
+        """
+        try:
+            # Forward any unknown attribute to the NumPy component
+            attr = getattr(self._data[: self._size], name)  # self.view = self._data[: self._size]
+            if callable(attr):
+
+                def method(*args, **kwargs):
+                    return attr(*args, **kwargs)
+
+                return method
+            return attr
+        except AttributeError:
+            raise AttributeError(f"'DynamicVector' object has no attribute '{name}'")
+
     def __len__(self) -> int:
         return self._size
 
