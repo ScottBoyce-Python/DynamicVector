@@ -14,16 +14,34 @@ try:
         __copyright__,
     )
 except ImportError:
-    __version__ = "Failed to load from _metadata.py"
-    __author__ = __version__
-    __email__ = __version__
-    __license__ = __version__
-    __status__ = __version__
-    __maintainer__ = __version__
-    __credits__ = __version__
-    __url__ = __version__
-    __description__ = __version__
-    __copyright__ = __version__
+    try:
+        from _metadata import (
+            __version__,
+            __author__,
+            __email__,
+            __license__,
+            __status__,
+            __maintainer__,
+            __credits__,
+            __url__,
+            __description__,
+            __copyright__,
+        )
+    except ImportError:
+        # _metadata.py failed to load,
+        # fill in with dummy values (script may be standalone)
+        __version__ = "Failed to load from _metadata.py"
+        __author__ = __version__
+        __email__ = __version__
+        __license__ = __version__
+        __status__ = __version__
+        __maintainer__ = __version__
+        __credits__ = __version__
+        __url__ = __version__
+        __description__ = __version__
+        __copyright__ = __version__
+
+# %% --------------------------------------------------------------------------
 
 __all__ = [
     "DynamicVector",
@@ -331,7 +349,7 @@ class DynamicVector:
 
         Parameters:
             object (array_like):        Size and dtype of array used to build the DynamicVector.
-            dtype      (type, optional): The type of the full in the vector. Defaults to `np.array(fill_value).dtype`.
+            dtype      (type, optional): The type of the full in the vector. Defaults to `np.array(object).dtype`.
             capacity  (int,  optional): Initial minimum capacity of the underlying storage vector. Defaults to max(8, len(object)).
 
         Returns:
