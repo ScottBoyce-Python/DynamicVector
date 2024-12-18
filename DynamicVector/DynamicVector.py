@@ -4,11 +4,11 @@ try:
     from ._metadata import (
         __version__,
         __author__,
+        __credits__,
+        __maintainer__,
         __email__,
         __license__,
         __status__,
-        __maintainer__,
-        __credits__,
         __url__,
         __description__,
         __copyright__,
@@ -18,11 +18,11 @@ except ImportError:
         from _metadata import (
             __version__,
             __author__,
+            __credits__,
+            __maintainer__,
             __email__,
             __license__,
             __status__,
-            __maintainer__,
-            __credits__,
             __url__,
             __description__,
             __copyright__,
@@ -31,14 +31,14 @@ except ImportError:
         # _metadata.py failed to load,
         # fill in with dummy values (script may be standalone)
         __version__ = "Failed to load from _metadata.py"
-        __author__ = __version__
-        __email__ = __version__
-        __license__ = __version__
+        __author__ = "Scott E. Boyce"
+        __credits__ = "Scott E. Boyce"
+        __maintainer__ = "Scott E. Boyce"
+        __email__ = "boyce@engineer.com"
+        __license__ = "MIT"
         __status__ = __version__
-        __maintainer__ = __version__
-        __credits__ = __version__
-        __url__ = __version__
-        __description__ = __version__
+        __url__ = "https://github.com/ScottBoyce-Python/DynamicVector"
+        __description__ = "A dynamic vector implementation using NumPy arrays, with dynamic resizing capabilities, fast appending and popping,"
         __copyright__ = __version__
 
 # %% --------------------------------------------------------------------------
