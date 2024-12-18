@@ -1560,9 +1560,13 @@ class DynamicVector:
         res -= other
         return res
 
-    def __rsub__(self, other):  # To get called on subtraction operation using - operator.
-        res = self.copy()
-        res -= other
+    def __rsub__(self, other):  # To get called on subtraction operation using other - self operator.
+        if isinstance(other, DynamicVector):
+            res = other.copy()
+            res -= self.view
+        else:
+            res = DynamicVector.from_values(other)
+            res -= self.view
         return res
 
     def __mul__(self, other):  # To get called on multiplication operation using * operator.
@@ -1581,8 +1585,12 @@ class DynamicVector:
         return res
 
     def __rfloordiv__(self, other):  # To get called on floor division operation using // operator.
-        res = self.copy()
-        res //= other
+        if isinstance(other, DynamicVector):
+            res = other.copy()
+            res //= self.view
+        else:
+            res = DynamicVector.from_values(other)
+            res //= self.view
         return res
 
     def __truediv__(self, other):  # To get called on division operation using / operator.
@@ -1591,8 +1599,12 @@ class DynamicVector:
         return res
 
     def __rtruediv__(self, other):  # To get called on division operation using / operator.
-        res = self.copy()
-        res /= other
+        if isinstance(other, DynamicVector):
+            res = other.copy()
+            res /= self.view
+        else:
+            res = DynamicVector.from_values(other)
+            res /= self.view
         return res
 
     def __mod__(self, other):  # To get called on modulo operation using % operator.
@@ -1601,8 +1613,12 @@ class DynamicVector:
         return res
 
     def __rmod__(self, other):  # To get called on modulo operation using % operator.
-        res = self.copy()
-        res %= other
+        if isinstance(other, DynamicVector):
+            res = other.copy()
+            res %= self.view
+        else:
+            res = DynamicVector.from_values(other)
+            res %= self.view
         return res
 
     def __pow__(self, other):  # To get called on calculating the power using ** operator.
@@ -1611,8 +1627,12 @@ class DynamicVector:
         return res
 
     def __rpow__(self, other):  # To get called on calculating the power using ** operator.
-        res = self.copy()
-        res **= other
+        if isinstance(other, DynamicVector):
+            res = other.copy()
+            res **= self.view
+        else:
+            res = DynamicVector.from_values(other)
+            res **= self.view
         return res
 
     def __lt__(self, other):  # To get called on comparison using < operator.
