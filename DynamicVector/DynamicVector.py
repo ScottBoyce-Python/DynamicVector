@@ -1517,19 +1517,7 @@ class DynamicVector:
         self._data[: self._size] /= other
         return self
 
-    def __irtruediv__(self, other):  # To get called on true division with assignment e.g. a /=b.
-        if isinstance(other, DynamicVector):
-            other = other.view
-        self._data[: self._size] /= other
-        return self
-
     def __ifloordiv__(self, other):  # To get called on integer division with assignment e.g. a //=b.
-        if isinstance(other, DynamicVector):
-            other = other.view
-        self._data[: self._size] //= other
-        return self
-
-    def __irfloordiv__(self, other):  # To get called on integer division with assignment e.g. a //=b.
         if isinstance(other, DynamicVector):
             other = other.view
         self._data[: self._size] //= other
@@ -1541,30 +1529,18 @@ class DynamicVector:
         self._data[: self._size] %= other
         return self
 
-    def __irmod__(self, other):  # To get called on modulo with assignment e.g. a%=b.
-        if isinstance(other, DynamicVector):
-            other = other.view
-        self._data[: self._size] %= other
-        return self
-
     def __ipow__(self, other):  # To get called on exponents with assignment e.g. a **=b.
         if isinstance(other, DynamicVector):
             other = other.view
         self._data[: self._size] **= other
         return self
 
-    def __irpow__(self, other):  # To get called on exponents with assignment e.g. a **=b.
-        if isinstance(other, DynamicVector):
-            other = other.view
-        self._data[: self._size] **= other
-        return self
-
-    def __int__(self):  # To get called by built-int int() method to convert a type to an int.
+    def __int__(self):  # To get called by built-in int() method to convert a type to an int.
         res = DynamicVector(int, self._cap)
         res.extend(self.view)
         return res
 
-    def __float__(self):  # To get called by built-int float() method to convert a type to float.
+    def __float__(self):  # To get called by built-in float() method to convert a type to float.
         res = DynamicVector(float, self._cap)
         res.extend(self.view)
         return res
